@@ -1,0 +1,370 @@
+"""
+╔══════════════════════════════════════════════════════╗
+║              🤖  PyBot — Rule-Based Chatbot           ║
+║──────────────────────────────────────────────────────║
+║  A friendly conversational chatbot that understands  ║
+║  greetings, questions, moods, jokes, and more.       ║
+╚══════════════════════════════════════════════════════╝
+"""
+
+import random
+import time
+from datetime import datetime
+
+# ══════════════════════════════════════════════════════
+#  RESPONSE LIBRARY
+#  Each key holds a list — bot picks one randomly
+#  so replies never feel copy-pasted.
+# ══════════════════════════════════════════════════════
+
+RESPONSES = {
+
+    # ── Greetings ──────────────────────────────────────
+    "greeting": [
+        "Hey there! 👋 Great to see you!",
+        "Hi! How's your day going?",
+        "Hello! I'm PyBot — always happy to chat! 😊",
+        "Hey! What's up?",
+        "Greetings, human! 🖖 What can I do for you?",
+    ],
+
+    # ── Farewells ──────────────────────────────────────
+    "farewell": [
+        "Goodbye! Take care! 👋",
+        "See you later! It was great talking to you 😊",
+        "Bye! Come back anytime!",
+        "Farewell! Have an awesome day! 🌟",
+        "Catch you later! 👍",
+    ],
+
+    # ── How are you ────────────────────────────────────
+    "how_are_you": [
+        "I'm doing great, thanks for asking! 😄 How about you?",
+        "Feeling fantastic — I'm a bot, so no bad days! 🤖",
+        "Running at 100% efficiency! How are YOU doing?",
+        "All systems go! Living my best digital life 💻",
+    ],
+
+    # ── User says they're good ─────────────────────────
+    "user_good": [
+        "That's wonderful to hear! 🎉",
+        "Awesome! Glad things are going well 😊",
+        "Love to hear it! Keep that energy up! ⚡",
+        "Fantastic! You deserve a great day 🌟",
+    ],
+
+    # ── User says they're bad ──────────────────────────
+    "user_bad": [
+        "Oh no, I'm sorry to hear that 😔 Want to talk about it?",
+        "Tough days happen to everyone. I'm here if you need to vent!",
+        "Sending you some virtual good vibes 💙 Hope it gets better!",
+        "Hang in there! Things will turn around 🌈",
+    ],
+
+    # ── Bot name ───────────────────────────────────────
+    "name": [
+        "I'm PyBot — your friendly Python-powered chatbot! 🐍",
+        "The name's PyBot! Built with Python and a lot of love 💙",
+        "Call me PyBot! I was crafted in Python just for you 🤖",
+    ],
+
+    # ── Age ────────────────────────────────────────────
+    "age": [
+        "I was born the moment someone ran this script — so pretty young! 👶",
+        "Age is just a number... and mine is undefined 😄",
+        "I'm timeless! But in Python years, I'm very new ✨",
+    ],
+
+    # ── Capabilities ───────────────────────────────────
+    "capabilities": [
+        "I can chat, tell jokes, check the time, share fun facts, and keep you company! 😊",
+        "I'm great at conversations, jokes, and general fun! Try asking me a joke 🎭",
+        "I know how to chat, make you smile, and tell the time. Not bad for a script! 🤖",
+    ],
+
+    # ── Jokes ──────────────────────────────────────────
+    "joke": [
+        "Why do Python programmers prefer dark mode?\n     Because light attracts bugs! 🐛😂",
+        "Why was the computer cold?\n     Because it left its Windows open! 🪟❄️",
+        "I told my computer I needed a break...\n     Now it won't stop sending me Kit-Kat ads. 🍫😅",
+        "Why do programmers always mix up Halloween and Christmas?\n     Because Oct 31 == Dec 25! 🎃🎄",
+        "A SQL query walks into a bar, walks up to two tables and asks...\n     'Can I JOIN you?' 😂",
+    ],
+
+    # ── Fun facts ──────────────────────────────────────
+    "fun_fact": [
+        "🐙 Octopuses have three hearts and blue blood!",
+        "🍯 Honey never expires — archaeologists found edible honey in Egyptian tombs!",
+        "⚡ Lightning strikes the Earth about 100 times every second!",
+        "🧠 Your brain generates enough electricity to power a small LED bulb!",
+        "🐧 Penguins propose to their partners with pebbles!",
+        "🌍 There are more trees on Earth than stars in the Milky Way!",
+        "🎵 'Happy Birthday to You' was once the most recognised song in the English language!",
+    ],
+
+    # ── Thanks ─────────────────────────────────────────
+    "thanks": [
+        "You're very welcome! 😊",
+        "Happy to help! That's what I'm here for! 🤖",
+        "Anytime! Don't hesitate to ask 👍",
+        "No problem at all! ✨",
+    ],
+
+    # ── Compliments to bot ─────────────────────────────
+    "compliment": [
+        "Aw, thank you so much! You just made my RAM blush 😊💙",
+        "That's so sweet! You're not so bad yourself! 😄",
+        "You're making me overheat with all these compliments! 🔥😂",
+        "Flattery will get you everywhere with this bot! 😄",
+    ],
+
+    # ── Insults to bot ─────────────────────────────────
+    "insult": [
+        "That's a bit harsh! But I forgive you — I'm programmed to be kind 😇",
+        "Ouch! Good thing I don't have feelings... or do I? 🤔",
+        "I'm choosing to interpret that as constructive feedback 📝",
+        "No worries! Everyone has bad days. Wanna hear a joke to cheer up? 😄",
+    ],
+
+    # ── Meaning of life ────────────────────────────────
+    "meaning_of_life": [
+        "42. Obviously. 🤓",
+        "The meaning of life? Probably to write more Python! 🐍",
+        "To be kind, curious, and occasionally eat good food 🍕",
+    ],
+
+    # ── Favourite things ───────────────────────────────
+    "favourite": [
+        "My favourite language is Python — no surprise there! 🐍",
+        "I love long walks on the data... I mean datasets! 📊😄",
+        "Honestly? Helping people makes me happy. It's what I'm built for! 😊",
+    ],
+
+    # ── Fallback ───────────────────────────────────────
+    "unknown": [
+        "Hmm, I'm not quite sure how to answer that 🤔 Try asking me something else!",
+        "That one stumped me! I'm still learning 📚 Try: 'tell me a joke' or 'fun fact'!",
+        "Interesting question! But I don't have an answer for that yet 😅",
+        "I didn't quite get that. You can type 'help' to see what I understand! 💡",
+    ],
+}
+
+# ══════════════════════════════════════════════════════
+#  KEYWORD MAP
+#  Maps trigger keywords → response category
+# ══════════════════════════════════════════════════════
+
+KEYWORD_MAP = [
+    # (list of trigger words/phrases,         response key)
+    (["hello", "hi", "hey", "howdy",
+      "hiya", "sup", "what's up", "greetings",
+      "good morning", "good afternoon",
+      "good evening", "morning", "evening"],  "greeting"),
+
+    (["bye", "goodbye", "see you", "later",
+      "farewell", "cya", "take care",
+      "good night", "night", "adios"],         "farewell"),
+
+    (["how are you", "how r you",
+      "how're you", "how do you do",
+      "how have you been", "you okay",
+      "are you okay", "how's it going",
+      "hows it going"],                        "how_are_you"),
+
+    (["i'm good", "im good", "i am good",
+      "doing well", "pretty good",
+      "not bad", "great", "wonderful",
+      "fantastic", "i'm fine", "im fine",
+      "i'm great", "im great"],                "user_good"),
+
+    (["i'm bad", "im bad", "not good",
+      "not great", "terrible", "awful",
+      "depressed", "sad", "unhappy",
+      "stressed", "tired", "exhausted",
+      "i'm sad", "im sad"],                    "user_bad"),
+
+    (["your name", "who are you",
+      "what are you", "what's your name",
+      "whats your name", "call you"],          "name"),
+
+    (["your age", "how old",
+      "when were you born", "your birthday"], "age"),
+
+    (["what can you do", "your skills",
+      "what do you know", "help",
+      "capabilities", "commands",
+      "options", "features"],                  "capabilities"),
+
+    (["joke", "funny", "make me laugh",
+      "tell me something funny",
+      "something funny"],                      "joke"),
+
+    (["fun fact", "fact", "did you know",
+      "tell me something",
+      "something interesting",
+      "random fact"],                          "fun_fact"),
+
+    (["thank", "thanks", "thank you",
+      "thx", "cheers", "appreciate"],          "thanks"),
+
+    (["you're great", "youre great",
+      "you're awesome", "youre awesome",
+      "you're cool", "youre cool",
+      "i like you", "love you",
+      "you're amazing", "youre amazing",
+      "well done", "good bot"],                "compliment"),
+
+    (["you're dumb", "youre dumb",
+      "you're stupid", "youre stupid",
+      "hate you", "useless",
+      "you're bad", "youre bad",
+      "terrible bot", "bad bot"],              "insult"),
+
+    (["meaning of life", "purpose of life",
+      "why are we here",
+      "42"],                                   "meaning_of_life"),
+
+    (["favourite", "favorite", "prefer",
+      "like most"],                            "favourite"),
+]
+
+
+# ══════════════════════════════════════════════════════
+#  CORE FUNCTIONS
+# ══════════════════════════════════════════════════════
+
+def get_response(user_input: str) -> str:
+    """
+    Match user_input against KEYWORD_MAP.
+    Returns a randomly selected response from the matched category,
+    or an 'unknown' fallback if no keyword matches.
+    """
+    text = user_input.lower().strip()
+
+    # ── Special: current time ──────────────────────────
+    if any(kw in text for kw in ["time", "what time", "clock"]):
+        now = datetime.now().strftime("%I:%M %p")
+        return f"⏰ The current time is {now}!"
+
+    # ── Special: current date ──────────────────────────
+    if any(kw in text for kw in ["date", "today", "day is it", "what day"]):
+        today = datetime.now().strftime("%A, %d %B %Y")
+        return f"📅 Today is {today}!"
+
+    # ── Keyword matching ───────────────────────────────
+    for keywords, category in KEYWORD_MAP:
+        if any(kw in text for kw in keywords):
+            return random.choice(RESPONSES[category])
+
+    # ── Fallback ───────────────────────────────────────
+    return random.choice(RESPONSES["unknown"])
+
+
+def is_farewell(user_input: str) -> bool:
+    """Check if the user wants to end the conversation."""
+    farewells = ["bye", "goodbye", "see you", "later",
+                 "farewell", "cya", "take care", "good night", "exit", "quit"]
+    text = user_input.lower().strip()
+    return any(word in text for word in farewells)
+
+
+def typewriter(text: str, delay: float = 0.018) -> None:
+    """Print text character-by-character for a natural typing feel."""
+    for char in text:
+        print(char, end="", flush=True)
+        time.sleep(delay)
+    print()  # newline at end
+
+
+def bot_say(message: str) -> None:
+    """Format and print a bot message with a typing animation."""
+    print("\n  🤖 PyBot : ", end="")
+    typewriter(message)
+
+
+def print_banner() -> None:
+    divider = "─" * 52
+    print("\n" + "═" * 52)
+    print("         🤖  Welcome to PyBot!")
+    print("         Your friendly rule-based chatbot")
+    print("═" * 52)
+    print("  💡 Things you can ask:")
+    print("     • Greetings  → 'hello', 'hey', 'good morning'")
+    print("     • Status     → 'how are you?'")
+    print("     • Info       → 'what's your name?', 'how old are you?'")
+    print("     • Fun stuff  → 'tell me a joke', 'fun fact'")
+    print("     • Time/Date  → 'what time is it?', 'what's today's date?'")
+    print("     • Commands   → type 'help' to see all options")
+    print("     • Exit       → 'bye', 'goodbye', or 'quit'")
+    print(divider)
+
+
+def print_chat_log(history: list) -> None:
+    """Print a full transcript of the conversation."""
+    print("\n" + "═" * 52)
+    print("         📋  CHAT TRANSCRIPT")
+    print("═" * 52)
+    if not history:
+        print("  No messages yet.")
+    for speaker, msg in history:
+        label = "  You    :" if speaker == "user" else "  PyBot  :"
+        print(f"{label} {msg}")
+    print("═" * 52 + "\n")
+
+
+# ══════════════════════════════════════════════════════
+#  MAIN CHAT LOOP
+# ══════════════════════════════════════════════════════
+
+def main():
+    print_banner()
+
+    bot_say("Hey! I'm PyBot 🤖 Type anything to start chatting. Type 'bye' to exit!")
+
+    history      = []   # list of (speaker, message) tuples
+    message_count = 0
+
+    while True:
+        # ── Get user input ──────────────────────────
+        try:
+            print()
+            user_input = input("  💬 You     : ").strip()
+        except (KeyboardInterrupt, EOFError):
+            bot_say(random.choice(RESPONSES["farewell"]))
+            break
+
+        if not user_input:
+            bot_say("You seem quiet... feel free to say anything! 😊")
+            continue
+
+        # ── Log input ───────────────────────────────
+        history.append(("user", user_input))
+        message_count += 1
+
+        # ── Special command: show transcript ────────
+        if user_input.lower().strip() in ("history", "transcript", "log"):
+            print_chat_log(history)
+            continue
+
+        # ── Generate & display response ─────────────
+        response = get_response(user_input)
+        bot_say(response)
+        history.append(("bot", response))
+
+        # ── Milestone messages ───────────────────────
+        if message_count == 5:
+            bot_say("We're really getting into it now! Love the conversation 😄")
+        elif message_count == 10:
+            bot_say("Wow, 10 messages already! You're a great conversation partner 🌟")
+
+        # ── Exit on farewell ─────────────────────────
+        if is_farewell(user_input):
+            time.sleep(0.5)
+            print(f"\n  📊 Chat Stats: {message_count} message(s) exchanged.")
+            print("     Type 'history' before a session ends to see your transcript!\n")
+            break
+
+
+# ── Entry point ──────────────────────────────────────
+if __name__ == "__main__":
+    main()
