@@ -1,0 +1,214 @@
+"""
+================================================
+  📈  Stock Portfolio Tracker
+================================================
+  - Hardcoded stock prices (dictionary)
+  - User adds stocks & quantities interactively
+  - Displays a formatted portfolio summary
+  - Saves results to portfolio_report.csv
+================================================
+"""
+
+import csv
+import os
+from datetime import datetime
+
+# ─── Hardcoded stock price dictionary (USD) ─────────────────────────────────
+STOCK_PRICES = {
+    "AAPL":  180.00,   # Apple
+    "TSLA":  250.00,   # Tesla
+    "GOOGL": 140.00,   # Alphabet (Google)
+    "MSFT":  375.00,   # Microsoft
+    "AMZN":  185.00,   # Amazon
+    "NVDA":  875.00,   # NVIDIA
+    "META":  505.00,   # Meta (Facebook)
+    "NFLX":  625.00,   # Netflix
+    "BRK":   380.00,   # Berkshire Hathaway
+    "JPM":   198.00,   # JPMorgan Chase
+}
+
+DIVIDER  = "─" * 54
+DIVIDER2 = "═" * 54
+
+
+# ─── Helper: Show all available tickers ─────────────────────────────────────
+def show_available_stocks():
+    print(f"\n{'  Ticker':<12} {'Company':<22} {'Price (USD)':>12}")
+    print(DIVIDER)
+    companies = {
+        "AAPL": "Apple",         "TSLA": "Tesla",
+        "GOOGL": "Alphabet",     "MSFT": "Microsoft",
+        "AMZN": "Amazon",        "NVDA": "NVIDIA",
+        "META": "Meta",          "NFLX": "Netflix",
+        "BRK":  "Berkshire H.",  "JPM":  "JPMorgan Chase",
+    }
+    for ticker, price in STOCK_PRICES.items():
+        print(f"  {ticker:<10} {companies[ticker]:<22} ${price:>10,.2f}")
+    print(DIVIDER)
+
+
+# ─── Helper: Print the portfolio summary table ───────────────────────────────
+def print_summary(portfolio):
+    print(f"\n\n{'  PORTFOLIO SUMMARY':^54}")
+    print(DIVIDER2)
+    print(f"  {'Stock':<8} {'Qty':>6}  {'Price':>10}  {'Value':>12}")
+    print(DIVIDER)
+
+    total = 0.0
+    rows  = []   # for CSV export
+
+    for ticker, qty in portfolio.items():
+        price = STOCK_PRICES[ticker]
+        value = price * qty
+        total += value
+        print(f"  {ticker:<8} {qty:>6}  ${price:>9,.2f}  ${value:>11,.2f}")
+        rows.append((ticker, qty, price, value))
+
+    print(DIVIDER)
+    print(f"  {'TOTAL INVESTMENT':>27}  ${total:>11,.2f}")
+    print(DIVIDER2 + "\n")
+
+    return rows, total
+
+
+# ─── Helper: Save report to CSV ──────────────────────────────────────────────
+def save_to_csv(rows, total, filename="portfolio_report.csv"):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(filename, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Stock Portfolio Report"])
+        writer.writerow(["Generated:", timestamp])
+        writer.writerow([])
+        writer.writerow(["Ticker", "Quantity", "Price (USD)", "Value (USD)"])
+        for ticker, qty, price, value in rows:
+            writer.writerow([ticker, qty, f"{price:.2f}", f"{value:.2f}"])
+        writer.writerow([])
+        writer.writerow(["", "", "TOTAL", f"{total:.2f}"])
+
+    print(f"  ✔  Report saved to  →  {os.path.abspath(filename)}\n")
+
+
+# ─── Helper: Save report to TXT ──────────────────────────────────────────────
+def save_to_txt(rows, total, filename="portfolio_report.txt"):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line      = DIVIDER
+
+    with open(filename, "w") as f:
+        f.write("=" * 54 + "\n")
+        f.write("        STOCK PORTFOLIO REPORT\n")
+        f.write(f"        Generated: {timestamp}\n")
+        f.write("=" * 54 + "\n\n")
+        f.write(f"  {'Stock':<8} {'Qty':>6}  {'Price':>10}  {'Value':>12}\n")
+        f.write(line + "\n")
+        for ticker, qty, price, value in rows:
+            f.write(f"  {ticker:<8} {qty:>6}  ${price:>9,.2f}  ${value:>11,.2f}\n")
+        f.write(line + "\n")
+        f.write(f"  {'TOTAL INVESTMENT':>27}  ${total:>11,.2f}\n")
+        f.write("=" * 54 + "\n")
+
+    print(f"  ✔  Report saved to  →  {os.path.abspath(filename)}\n")
+
+
+# ─── Main application ────────────────────────────────────────────────────────
+def main():
+    portfolio = {}   # { "AAPL": 10, "TSLA": 5, ... }
+
+    print("\n" + DIVIDER2)
+    print("        📈  STOCK PORTFOLIO TRACKER")
+    print(DIVIDER2)
+    print("  Track your investments using real-time-like prices.")
+
+    while True:
+        print("\n  ── MENU ──────────────────────────────────────")
+        print("  [1]  Add / update a stock")
+        print("  [2]  Remove a stock")
+        print("  [3]  View available stocks & prices")
+        print("  [4]  View portfolio summary")
+        print("  [5]  Save report  (CSV)")
+        print("  [6]  Save report  (TXT)")
+        print("  [7]  Quit")
+        print("  " + DIVIDER)
+
+        choice = input("  Enter choice (1-7): ").strip()
+
+        # ── Add / update stock ────────────────────────────────────────────
+        if choice == "1":
+            ticker = input("\n  Enter stock ticker (e.g. AAPL): ").strip().upper()
+            if ticker not in STOCK_PRICES:
+                print(f"  ✘  '{ticker}' not found. Choose from: {', '.join(STOCK_PRICES)}")
+                continue
+            try:
+                qty = int(input(f"  Enter quantity for {ticker}: ").strip())
+                if qty <= 0:
+                    print("  ✘  Quantity must be a positive integer.")
+                    continue
+            except ValueError:
+                print("  ✘  Invalid quantity. Please enter a whole number.")
+                continue
+
+            action = "Updated" if ticker in portfolio else "Added"
+            portfolio[ticker] = qty
+            price = STOCK_PRICES[ticker]
+            print(f"  ✔  {action}: {qty} × {ticker} @ ${price:,.2f} = ${price * qty:,.2f}")
+
+        # ── Remove stock ──────────────────────────────────────────────────
+        elif choice == "2":
+            if not portfolio:
+                print("  ⚠  Your portfolio is empty.")
+                continue
+            ticker = input("\n  Enter ticker to remove: ").strip().upper()
+            if ticker in portfolio:
+                del portfolio[ticker]
+                print(f"  ✔  {ticker} removed from portfolio.")
+            else:
+                print(f"  ✘  {ticker} is not in your portfolio.")
+
+        # ── View available stocks ─────────────────────────────────────────
+        elif choice == "3":
+            show_available_stocks()
+
+        # ── View portfolio summary ────────────────────────────────────────
+        elif choice == "4":
+            if not portfolio:
+                print("\n  ⚠  Your portfolio is empty. Add some stocks first.")
+                continue
+            print_summary(portfolio)
+
+        # ── Save CSV ──────────────────────────────────────────────────────
+        elif choice == "5":
+            if not portfolio:
+                print("\n  ⚠  Nothing to save. Add some stocks first.")
+                continue
+            rows, total = print_summary(portfolio)
+            save_to_csv(rows, total)
+
+        # ── Save TXT ──────────────────────────────────────────────────────
+        elif choice == "6":
+            if not portfolio:
+                print("\n  ⚠  Nothing to save. Add some stocks first.")
+                continue
+            rows, total = print_summary(portfolio)
+            save_to_txt(rows, total)
+
+        # ── Quit ──────────────────────────────────────────────────────────
+        elif choice == "7":
+            if portfolio:
+                rows, total = print_summary(portfolio)
+                save = input("  Save a final report before quitting? (y/n): ").strip().lower()
+                if save == "y":
+                    fmt = input("  Format — CSV or TXT? (c/t): ").strip().lower()
+                    if fmt == "t":
+                        save_to_txt(rows, total)
+                    else:
+                        save_to_csv(rows, total)
+            print("\n  👋  Thanks for using Stock Portfolio Tracker. Goodbye!\n")
+            break
+
+        else:
+            print("  ✘  Invalid option. Please enter a number from 1 to 7.")
+
+
+# ─── Entry point ────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    main()
