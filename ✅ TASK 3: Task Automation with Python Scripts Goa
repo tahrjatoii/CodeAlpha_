@@ -1,0 +1,327 @@
+"""
+╔══════════════════════════════════════════════════════╗
+║       🤖  Python Task Automation Toolkit             ║
+║──────────────────────────────────────────────────────║
+║  Task 1 │ Move .jpg files to a new folder            ║
+║  Task 2 │ Extract emails from a .txt file            ║
+║  Task 3 │ Scrape webpage title & save it             ║
+╚══════════════════════════════════════════════════════╝
+"""
+
+import os
+import re
+import shutil
+from datetime import datetime
+
+# ── Optional imports (graceful fallback) ─────────────────────────────────────
+try:
+    import requests
+    from html.parser import HTMLParser
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
+DIVIDER  = "─" * 56
+DIVIDER2 = "═" * 56
+TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TASK 1 — Move .jpg files into a dedicated sub-folder
+# ══════════════════════════════════════════════════════════════════════════════
+
+def task_move_jpg_files():
+    """
+    Scans a source directory for all .jpg / .jpeg files and moves
+    them into a destination sub-folder, with a full activity log.
+    """
+    print(f"\n{'  📁  TASK 1 — Move .jpg Files':^56}")
+    print(DIVIDER2)
+
+    # ── Get source directory ──────────────────────────────────────────────
+    src = input("\n  Enter source folder path (or press Enter for current dir): ").strip()
+    if not src:
+        src = os.getcwd()
+
+    if not os.path.isdir(src):
+        print(f"\n  ✘  Folder not found: '{src}'")
+        return
+
+    # ── Get / create destination folder ──────────────────────────────────
+    default_dest = os.path.join(src, "moved_images")
+    dest_input   = input(f"  Enter destination folder (Enter = '{default_dest}'): ").strip()
+    dest         = dest_input if dest_input else default_dest
+
+    os.makedirs(dest, exist_ok=True)
+
+    # ── Scan for .jpg / .jpeg files ───────────────────────────────────────
+    jpg_files = [
+        f for f in os.listdir(src)
+        if f.lower().endswith((".jpg", ".jpeg")) and os.path.isfile(os.path.join(src, f))
+    ]
+
+    if not jpg_files:
+        print(f"\n  ⚠  No .jpg / .jpeg files found in:\n     {src}")
+        return
+
+    print(f"\n  Found {len(jpg_files)} file(s). Moving to:\n  → {dest}\n")
+    print(f"  {'#':<5} {'File':<35} {'Status'}")
+    print(DIVIDER)
+
+    moved, skipped, log_rows = 0, 0, []
+
+    for i, filename in enumerate(sorted(jpg_files), 1):
+        src_path  = os.path.join(src,  filename)
+        dest_path = os.path.join(dest, filename)
+
+        # Avoid overwriting — rename with suffix if conflict
+        if os.path.exists(dest_path):
+            base, ext  = os.path.splitext(filename)
+            dest_path  = os.path.join(dest, f"{base}_copy{ext}")
+            status     = "Moved (renamed)"
+        else:
+            status = "Moved"
+
+        shutil.move(src_path, dest_path)
+        moved += 1
+        print(f"  {i:<5} {filename:<35} ✔ {status}")
+        log_rows.append((filename, src_path, dest_path, status))
+
+    # ── Save log ──────────────────────────────────────────────────────────
+    log_path = os.path.join(dest, "move_log.txt")
+    with open(log_path, "w") as log:
+        log.write(f"JPG Move Log — {TIMESTAMP}\n")
+        log.write(f"Source      : {src}\n")
+        log.write(f"Destination : {dest}\n")
+        log.write(DIVIDER + "\n")
+        for name, s, d, status in log_rows:
+            log.write(f"  [{status}]  {name}\n    From: {s}\n    To  : {d}\n\n")
+
+    print(f"\n  {DIVIDER}")
+    print(f"  ✅  Done! {moved} file(s) moved.  Skipped: {skipped}")
+    print(f"  📄  Log saved  →  {log_path}\n")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TASK 2 — Extract email addresses from a .txt file
+# ══════════════════════════════════════════════════════════════════════════════
+
+# RFC-5321–flavoured but practical email regex
+EMAIL_REGEX = re.compile(
+    r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+)
+
+def task_extract_emails():
+    """
+    Reads a .txt file, finds every email address using regex,
+    de-duplicates, and saves the clean list to a new file.
+    """
+    print(f"\n{'  📧  TASK 2 — Extract Email Addresses':^56}")
+    print(DIVIDER2)
+
+    # ── Locate input file ─────────────────────────────────────────────────
+    txt_path = input("\n  Path to .txt file: ").strip()
+    if not txt_path:
+        # Demo: create a small sample file for testing
+        txt_path = "sample_emails.txt"
+        with open(txt_path, "w") as f:
+            f.write("""
+            Hello team,
+            Please reach out to alice@example.com or bob.smith@company.org for support.
+            Duplicates like alice@example.com should only appear once.
+            CC: charlie+newsletter@domain.co.uk, delta_99@sub.example.net
+            Invalid ones like @nodomain or missing@tld. or plain text won't match.
+            Contact: eve@startup.io for billing and frank@corp.com for legal.
+            """)
+        print(f"  ℹ  No path entered — using demo file: '{txt_path}'")
+
+    if not os.path.isfile(txt_path):
+        print(f"\n  ✘  File not found: '{txt_path}'")
+        return
+
+    # ── Read & search ─────────────────────────────────────────────────────
+    with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
+        content = f.read()
+
+    raw_matches  = EMAIL_REGEX.findall(content)
+    total_found  = len(raw_matches)
+    unique_emails = sorted(set(email.lower() for email in raw_matches))
+    duplicates   = total_found - len(unique_emails)
+
+    if not unique_emails:
+        print("\n  ⚠  No valid email addresses found in the file.")
+        return
+
+    # ── Display results ───────────────────────────────────────────────────
+    print(f"\n  Scanned : {txt_path}")
+    print(f"  Found   : {total_found} email(s)  ({duplicates} duplicate(s) removed)\n")
+    print(f"  {'#':<5} {'Email Address'}")
+    print(DIVIDER)
+    for i, email in enumerate(unique_emails, 1):
+        print(f"  {i:<5} {email}")
+
+    # ── Save to output file ───────────────────────────────────────────────
+    base_name  = os.path.splitext(os.path.basename(txt_path))[0]
+    output_dir = os.path.dirname(txt_path) or "."
+    out_path   = os.path.join(output_dir, f"{base_name}_emails_extracted.txt")
+
+    with open(out_path, "w") as out:
+        out.write(f"Email Extraction Report — {TIMESTAMP}\n")
+        out.write(f"Source file : {txt_path}\n")
+        out.write(f"Total found : {total_found}  |  Unique: {len(unique_emails)}  |  Duplicates removed: {duplicates}\n")
+        out.write(DIVIDER + "\n")
+        for i, email in enumerate(unique_emails, 1):
+            out.write(f"{i:>4}.  {email}\n")
+
+    print(f"\n  {DIVIDER}")
+    print(f"  ✅  {len(unique_emails)} unique email(s) extracted.")
+    print(f"  📄  Saved  →  {os.path.abspath(out_path)}\n")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TASK 3 — Scrape a webpage title and save it
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TitleParser(HTMLParser):
+    """Minimal HTML parser — only reads the <title> tag."""
+    def __init__(self):
+        super().__init__()
+        self.in_title = False
+        self.title    = ""
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() == "title":
+            self.in_title = True
+
+    def handle_data(self, data):
+        if self.in_title:
+            self.title += data
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "title":
+            self.in_title = False
+
+
+def scrape_title(url: str) -> str:
+    """Fetch a URL and extract its <title> using stdlib html.parser (no BS4 needed)."""
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; PythonBot/1.0)"}
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+
+    parser = TitleParser()
+    parser.feed(response.text)
+    return parser.title.strip()
+
+
+def task_scrape_title():
+    """
+    Fetches the <title> of a user-specified URL and appends the
+    result (with timestamp) to a persistent scrape_results.txt log.
+    """
+    print(f"\n{'    TASK 3 — Scrape Webpage Title':^56}")
+    print(DIVIDER2)
+
+    if not REQUESTS_AVAILABLE:
+        print("\n    'requests' library not installed.")
+        print("     Run:  pip install requests")
+        return
+
+    # ── Allow multiple URLs in one session ───────────────────────────────
+    results   = []
+    out_path  = "scrape_results.txt"
+
+    while True:
+        url = input("\n  Enter URL to scrape (or 'done' to finish): ").strip()
+        if url.lower() in ("done", ""):
+            break
+
+        # Auto-add scheme if missing
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+
+        print(f"   Fetching: {url}")
+        try:
+            title = scrape_title(url)
+            if title:
+                print(f"    Title: {title}")
+            else:
+                title = "(no <title> tag found)"
+                print(f"   {title}")
+            status = "OK"
+        except requests.exceptions.ConnectionError:
+            title  = "(connection error)"
+            status = "FAIL"
+            print(f"   Could not connect to {url}")
+        except requests.exceptions.HTTPError as e:
+            title  = f"(HTTP error: {e.response.status_code})"
+            status = "FAIL"
+            print(f"    HTTP {e.response.status_code} for {url}")
+        except Exception as e:
+            title  = f"(error: {str(e)[:60]})"
+            status = "FAIL"
+            print(f"    Error: {e}")
+
+        results.append((url, title, status, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+    if not results:
+        print("\n  ⚠  No URLs were processed.")
+        return
+
+    # ── Print summary table ───────────────────────────────────────────────
+    print(f"\n\n  {'RESULTS SUMMARY':^54}")
+    print(DIVIDER2)
+    for url, title, status, ts in results:
+        icon = "✔" if status == "OK" else "✘"
+        print(f"  {icon}  {url}")
+        print(f"      Title : {title}")
+        print(f"      Time  : {ts}\n")
+
+    # ── Append to persistent log file ────────────────────────────────────
+    mode = "a" if os.path.exists(out_path) else "w"
+    with open(out_path, mode) as f:
+        f.write("\n" + "=" * 56 + "\n")
+        f.write(f"  Scrape Session — {TIMESTAMP}\n")
+        f.write("=" * 56 + "\n\n")
+        for url, title, status, ts in results:
+            f.write(f"  [{status}]  Scraped : {ts}\n")
+            f.write(f"         URL   : {url}\n")
+            f.write(f"         Title : {title}\n\n")
+        f.write(DIVIDER + "\n")
+
+    print(f"  {DIVIDER}")
+    print(f"   {len(results)} URL(s) processed.")
+    print(f"    Appended to  →  {os.path.abspath(out_path)}\n")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  MAIN MENU
+# ══════════════════════════════════════════════════════════════════════════════
+
+def main():
+    print("\n" + DIVIDER2)
+    print("         PYTHON TASK AUTOMATION TOOLKIT")
+    print(DIVIDER2)
+    print("  Automate repetitive file & web tasks with ease.")
+
+    while True:
+        print(f"\n  ── SELECT A TASK {'─' * 36}")
+        print("  [1]  Move .jpg files to a new folder")
+        print("  [2]  Extract emails from a .txt file")
+        print("  [3]  Scrape a webpage title & save it")
+        print("  [4]  Quit")
+        print("  " + DIVIDER)
+
+        choice = input("  Enter choice (1-4): ").strip()
+
+        if   choice == "1": task_move_jpg_files()
+        elif choice == "2": task_extract_emails()
+        elif choice == "3": task_scrape_title()
+        elif choice == "4":
+            print("\n    Goodbye!\n")
+            break
+        else:
+            print("  ✘  Invalid option. Enter 1, 2, 3, or 4.")
+
+
+if __name__ == "__main__":
+    main()
